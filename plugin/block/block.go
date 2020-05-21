@@ -85,7 +85,7 @@ func Encode(
 ) (IscnObject, error) {
 	schemas, ok := factory[codec]
 	if !ok {
-		return nil, fmt.Errorf("%q is not registered", schemaNames[codec])
+		return nil, fmt.Errorf("Codec 0x%x is not registered", codec)
 	}
 
 	if version > (uint64)(len(schemas)) {
