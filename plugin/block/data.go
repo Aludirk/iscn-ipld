@@ -346,7 +346,7 @@ type Number struct {
 	*DataBase
 
 	number []byte
-	ty     NumberType
+	typ    NumberType
 
 	i32 int32
 	u32 uint32
@@ -357,10 +357,10 @@ type Number struct {
 var _ Data = (*Number)(nil)
 
 // NewNumber creates a number data handler
-func NewNumber(key string, isRequired bool, ty NumberType) *Number {
+func NewNumber(key string, isRequired bool, typ NumberType) *Number {
 	return &Number{
 		DataBase: NewDataBase(key, isRequired),
-		ty:       ty,
+		typ:      typ,
 	}
 }
 
@@ -368,13 +368,13 @@ func NewNumber(key string, isRequired bool, ty NumberType) *Number {
 func (d *Number) Prototype() Data {
 	return &Number{
 		DataBase: d.DataBase.Prototype(),
-		ty:       d.ty,
+		typ:      d.typ,
 	}
 }
 
 // GetType returns the type of the number
 func (d *Number) GetType() NumberType {
-	return d.ty
+	return d.typ
 }
 
 // GetInt32 returns an int32 value
@@ -828,7 +828,7 @@ func NewContext(schema string) *Context {
 // Prototype creates a prototype Context
 func (d *Context) Prototype() Data {
 	return &Context{
-		Number: NewNumber(d.GetKey(), d.IsRequired(), d.Number.ty),
+		Number: NewNumber(d.GetKey(), d.IsRequired(), d.Number.typ),
 		schema: d.schema,
 	}
 }

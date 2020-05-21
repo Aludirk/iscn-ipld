@@ -53,18 +53,18 @@ func newBase(version uint64, schema []block.Data) (*base, error) {
 type schemaV1 struct {
 	*base
 
-	ty        *Type
+	typ       *Type
 	footprint *Footprint
 }
 
 var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
-	ty := NewType()
+	typ := NewType()
 	footprint := NewFootprint()
 
 	schema := []block.Data{
-		ty,
+		typ,
 		block.NewCid("stakeholder", true, block.CodecEntity),
 		block.NewNumber("sharing", true, block.Uint32T),
 		footprint,
@@ -77,7 +77,7 @@ func newSchemaV1() (block.Codec, error) {
 
 	obj := schemaV1{
 		base:      stakeholderBase,
-		ty:        ty,
+		typ:       typ,
 		footprint: footprint,
 	}
 	stakeholderBase.SetValidator(obj.Validate)
@@ -93,7 +93,7 @@ func SchemaV1Prototype() block.Codec {
 
 // Validate the data
 func (o *schemaV1) Validate() error {
-	if o.ty.Get() == footprint {
+	if o.typ.Get() == footprint {
 		if !o.footprint.IsDefined() {
 			return fmt.Errorf("Footprint is missed")
 		}
