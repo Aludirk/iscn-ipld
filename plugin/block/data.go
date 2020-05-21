@@ -416,6 +416,9 @@ func (d *Number) Set(data interface{}) error {
 		var value int32
 		switch v := data.(type) {
 		case int:
+			if v < math.MinInt32 || math.MaxInt32 < v {
+				return fmt.Errorf("Number: 'int32' is expected but 'int' is found")
+			}
 			value = int32(v)
 		case int8:
 			value = int32(v)
@@ -459,7 +462,7 @@ func (d *Number) Set(data interface{}) error {
 		var value uint32
 		switch v := data.(type) {
 		case int:
-			if v < 0 {
+			if v < 0 || math.MaxUint32 < v {
 				return fmt.Errorf("Number: 'uint32' is expected but 'int' is found")
 			}
 			value = uint32(v)
@@ -521,6 +524,9 @@ func (d *Number) Set(data interface{}) error {
 		case int64:
 			value = v
 		case uint:
+			if v > math.MaxInt64 {
+				return fmt.Errorf("Number: 'int64' is expected but 'uint' is found")
+			}
 			value = int64(v)
 		case uint8:
 			value = int64(v)
