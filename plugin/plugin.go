@@ -1,19 +1,9 @@
 package plugin
 
 import (
-	"fmt"
-
 	"github.com/ipfs/go-ipfs/core/coredag"
 	"github.com/ipfs/go-ipfs/plugin"
-	"github.com/likecoin/iscn-ipld/plugin/block"
-	"github.com/likecoin/iscn-ipld/plugin/block/content"
-	"github.com/likecoin/iscn-ipld/plugin/block/entity"
-	"github.com/likecoin/iscn-ipld/plugin/block/kernel"
-	"github.com/likecoin/iscn-ipld/plugin/block/right"
-	"github.com/likecoin/iscn-ipld/plugin/block/rights"
-	"github.com/likecoin/iscn-ipld/plugin/block/stakeholder"
-	"github.com/likecoin/iscn-ipld/plugin/block/stakeholders"
-	"github.com/likecoin/iscn-ipld/plugin/block/time_period"
+	"github.com/likecoin/iscn-ipld/plugin/iscn"
 
 	ipld "github.com/ipfs/go-ipld-format"
 )
@@ -45,27 +35,13 @@ func (*Plugin) Version() string {
 
 // Init Plugin
 func (*Plugin) Init(*plugin.Environment) error {
-	fmt.Println("ISCN IPLD plugin loaded")
-	kernel.Register()
-	rights.Register()
-	stakeholders.Register()
-	content.Register()
-	entity.Register()
-
-	right.Register()
-	stakeholder.Register()
-	timeperiod.Register()
+	iscn.Register()
 	return nil
 }
 
 // RegisterBlockDecoders registers the decoder for different types of block
 func (*Plugin) RegisterBlockDecoders(decoder ipld.BlockDecoder) error {
-	decoder.Register(block.CodecISCN, block.DecodeBlock)
-	decoder.Register(block.CodecRights, block.DecodeBlock)
-	decoder.Register(block.CodecStakeholders, block.DecodeBlock)
-	decoder.Register(block.CodecContent, block.DecodeBlock)
-	decoder.Register(block.CodecEntity, block.DecodeBlock)
-	return nil
+	return iscn.RegisterBlockDecoders(decoder)
 }
 
 // RegisterInputEncParsers registers the encode parsers needed to put the blocks into the DAG
