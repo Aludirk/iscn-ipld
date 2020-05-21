@@ -68,7 +68,11 @@ var schemaNames map[uint64]string = map[uint64]string{}
 type Validator func() error
 
 // RegisterIscnObjectFactory registers an array of ISCN object factory functions
-func RegisterIscnObjectFactory(codec uint64, schemaName string, factories []CodecFactoryFunc) {
+func RegisterIscnObjectFactory(
+	codec uint64,
+	schemaName string,
+	factories ...CodecFactoryFunc,
+) {
 	factory[codec] = factories
 	schemaNames[codec] = schemaName
 }

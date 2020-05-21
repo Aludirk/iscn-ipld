@@ -14,9 +14,7 @@ func Register() {
 	block.RegisterIscnObjectFactory(
 		block.CodecContent,
 		SchemaName,
-		[]block.CodecFactoryFunc{
-			newSchemaV1,
-		},
+		newSchemaV1,
 	)
 }
 
