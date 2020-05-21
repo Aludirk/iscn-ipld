@@ -510,7 +510,11 @@ func (b *Base) Encode() (map[string]interface{}, error) {
 			continue
 		}
 
-		handler.Encode(&m)
+		enc, err := handler.Encode()
+		if err != nil {
+			return nil, err
+		}
+		m[handler.GetKey()] = enc
 	}
 
 	// Merge the custom data
@@ -559,9 +563,11 @@ func (b *Base) Decode(data map[string]interface{}) error {
 			continue
 		}
 
-		if err := handler.Decode(d, &b.obj); err != nil {
+		dec, err := handler.Decode(d)
+		if err != nil {
 			return err
 		}
+		b.obj[key] = dec
 
 		delete(data, key)
 	}

@@ -55,19 +55,21 @@ func (d *ID) Set(data interface{}) error {
 }
 
 // Encode ID
-func (d *ID) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.id
-	return nil
+func (d *ID) Encode() (interface{}, error) {
+	return d.id, nil
 }
 
 // Decode ID
-func (d *ID) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *ID) Decode(data interface{}) (interface{}, error) {
 	if err := d.Set(data); err != nil {
-		return err
+		return nil, err
 	}
 
-	(*m)[d.GetKey()] = d.id
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return d.id, nil
 }
 
 // ToJSON prepares the data for MarshalJSON

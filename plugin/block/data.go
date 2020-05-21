@@ -29,8 +29,8 @@ type Data interface {
 	Set(interface{}) error
 	GetKey() string
 
-	Encode(*map[string]interface{}) error
-	Decode(interface{}, *map[string]interface{}) error
+	Encode() (interface{}, error)
+	Decode(interface{}) (interface{}, error)
 	ToJSON(*ordered.OrderedMap) error
 
 	Resolve(path []string) (interface{}, []string, error)
@@ -87,9 +87,9 @@ func (b *DataBase) Set(interface{}) error {
 }
 
 // Decode the data
-func (b *DataBase) Decode(interface{}, *map[string]interface{}) error {
+func (b *DataBase) Decode(interface{}) (interface{}, error) {
 	b.isDefinded = true
-	return nil
+	return nil, nil
 }
 
 // ==================================================
@@ -144,42 +144,44 @@ func (d *DataArray) Set(data interface{}) error {
 }
 
 // Encode DataArray
-func (d *DataArray) Encode(m *map[string]interface{}) error {
-	placeholder := map[string]interface{}{}
+func (d *DataArray) Encode() (interface{}, error) {
 	res := []interface{}{}
 	for i, data := range d.array {
-		if err := data.Encode(&placeholder); err != nil {
-			return fmt.Errorf("(Index %d) %s", i, err.Error())
+		enc, err := data.Encode()
+		if err != nil {
+			return nil, fmt.Errorf("(Index %d) %s", i, err.Error())
 		}
-		res = append(res, placeholder[data.GetKey()])
+		res = append(res, enc)
 	}
 
-	(*m)[d.GetKey()] = res
-	return nil
+	return res, nil
 }
 
 // Decode DataArray
-func (d *DataArray) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *DataArray) Decode(data interface{}) (interface{}, error) {
 	switch reflect.TypeOf(data).Kind() {
 	case reflect.Slice:
-		placeholder := map[string]interface{}{}
 		res := []interface{}{}
 		s := reflect.ValueOf(data)
 		for i := 0; i < s.Len(); i++ {
 			elem := d.prototype.Prototype()
-			if err := elem.Decode(s.Index(i).Interface(), &placeholder); err != nil {
-				return fmt.Errorf("(Index %d) %s", i, err.Error())
+			dec, err := elem.Decode(s.Index(i).Interface())
+			if err != nil {
+				return nil, fmt.Errorf("(Index %d) %s", i, err.Error())
 			}
 
-			res = append(res, placeholder[elem.GetKey()])
+			res = append(res, dec)
 			d.array = append(d.array, elem)
 		}
 
-		(*m)[d.GetKey()] = res
-		return d.DataBase.Decode(data, m)
+		if _, err := d.DataBase.Decode(data); err != nil {
+			return nil, err
+		}
+
+		return res, nil
 	}
 
-	return fmt.Errorf("DataArray: an array is expected but '%T' is found", data)
+	return nil, fmt.Errorf("DataArray: an array is expected but '%T' is found", data)
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -279,28 +281,31 @@ func (d *Object) Set(data interface{}) error {
 }
 
 // Encode Object
-func (d *Object) Encode(m *map[string]interface{}) error {
+func (d *Object) Encode() (interface{}, error) {
 	obj, err := d.object.Encode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	(*m)[d.GetKey()] = obj
-	return nil
+	return obj, nil
 }
 
 // Decode Object
-func (d *Object) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Object) Decode(data interface{}) (interface{}, error) {
 	if value, ok := data.(map[string]interface{}); ok {
 		if err := d.object.Decode(value); err != nil {
-			return err
+			return nil, err
 		}
 
-		(*m)[d.GetKey()] = d.object
-		return d.DataBase.Decode(data, m)
+		if _, err := d.DataBase.Decode(data); err != nil {
+			return nil, err
+		}
+
+		return d.object, nil
 	}
 
-	return fmt.Errorf("Object: 'map[string]interface{}' is expected but '%T' is found", data)
+	return nil,
+		fmt.Errorf("Object: 'map[string]interface{}' is expected but '%T' is found", data)
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -588,56 +593,78 @@ func (d *Number) Set(data interface{}) error {
 }
 
 // Encode Number
-func (d *Number) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.number
-	return nil
+func (d *Number) Encode() (interface{}, error) {
+	return d.number, nil
 }
 
 // Decode Number
-func (d *Number) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Number) Decode(data interface{}) (interface{}, error) {
 	number, ok := data.([]byte)
 	if !ok {
-		return fmt.Errorf("Unknown error during decoding number: "+
-			"'[]byte' is expected but '%T' is found",
-			data,
-		)
+		return nil,
+			fmt.Errorf("Unknown error during decoding number: "+
+				"'[]byte' is expected but '%T' is found",
+				data,
+			)
 	}
 
-	var err error
 	r := bytes.NewReader(number)
 	switch d.GetType() {
 	case Int32T:
 		value, err := binary.ReadVarint(r)
-		if err == nil {
-			d.i32 = int32(value)
-			(*m)[d.GetKey()] = d.i32
+		if err != nil {
+			return nil, err
 		}
+
+		if value < math.MinInt32 || math.MaxInt32 < value {
+			return nil, fmt.Errorf("Unknown error: the number is not an int32")
+		}
+
+		d.i32 = int32(value)
 	case Uint32T:
 		value, err := binary.ReadUvarint(r)
-		if err == nil {
-			d.u32 = uint32(value)
-			(*m)[d.GetKey()] = d.u32
+		if err != nil {
+			return nil, err
 		}
+
+		if value > math.MaxUint32 {
+			return nil, fmt.Errorf("Unknown error: the number is not an uint32")
+		}
+
+		d.u32 = uint32(value)
 	case Int64T:
 		value, err := binary.ReadVarint(r)
-		if err == nil {
-			d.i64 = int64(value)
-			(*m)[d.GetKey()] = d.i64
+		if err != nil {
+			return nil, err
 		}
+
+		d.i64 = int64(value)
 	case Uint64T:
 		value, err := binary.ReadUvarint(r)
-		if err == nil {
-			d.u64 = uint64(value)
-			(*m)[d.GetKey()] = d.u64
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	if err != nil {
-		return err
+		d.u64 = uint64(value)
 	}
 
 	d.number = number
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	switch d.GetType() {
+	case Int32T:
+		return d.i32, nil
+	case Uint32T:
+		return d.u32, nil
+	case Int64T:
+		return d.i64, nil
+	case Uint64T:
+		return d.u64, nil
+	}
+
+	return nil, fmt.Errorf("Unkdown error: invalid number type")
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -739,19 +766,21 @@ func (d *String) Set(data interface{}) error {
 }
 
 // Encode String
-func (d *String) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.value
-	return nil
+func (d *String) Encode() (interface{}, error) {
+	return d.value, nil
 }
 
 // Decode String
-func (d *String) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *String) Decode(data interface{}) (interface{}, error) {
 	if err := d.Set(data); err != nil {
-		return err
+		return nil, err
 	}
 
-	(*m)[d.GetKey()] = d.value
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return d.value, nil
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -821,19 +850,21 @@ func (d *Context) Set(data interface{}) error {
 }
 
 // Encode Context
-func (d *Context) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.version
-	return nil
+func (d *Context) Encode() (interface{}, error) {
+	return d.version, nil
 }
 
 // Decode Context
-func (d *Context) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Context) Decode(data interface{}) (interface{}, error) {
 	if err := d.Set(data); err != nil {
-		return err
+		return nil, err
 	}
 
-	(*m)[d.GetKey()] = d.version
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return d.version, nil
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -914,36 +945,41 @@ func (d *Cid) Set(data interface{}) error {
 }
 
 // Encode Cid
-func (d *Cid) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.c
-	return nil
+func (d *Cid) Encode() (interface{}, error) {
+	return d.c, nil
 }
 
 // Decode Cid
-func (d *Cid) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Cid) Decode(data interface{}) (interface{}, error) {
 	c, ok := data.([]byte)
 	if !ok {
-		return fmt.Errorf("Unknown error during decoding Cid: "+
-			"'[]byte' is expected but '%T' is found",
-			data,
-		)
+		return nil,
+			fmt.Errorf("Unknown error during decoding Cid: "+
+				"'[]byte' is expected but '%T' is found",
+				data,
+			)
 	}
 
 	_, value, err := cid.CidFromBytes(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if d.codec != 0 && value.Type() != d.codec {
-		return fmt.Errorf(
-			"Cid: Codec '0x%x' is expected but '0x%x' is found",
-			d.codec,
-			value.Type())
+		return nil,
+			fmt.Errorf(
+				"Cid: Codec '0x%x' is expected but '0x%x' is found",
+				d.codec,
+				value.Type(),
+			)
 	}
 
 	d.c = c
-	(*m)[d.GetKey()] = value
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return value, nil
 }
 
 // ToJSON prepares the data for MarshalJSON
@@ -1035,34 +1071,39 @@ func (d *Timestamp) Set(data interface{}) error {
 }
 
 // Encode Timestamp
-func (d *Timestamp) Encode(m *map[string]interface{}) error {
-	(*m)[d.GetKey()] = d.ts
-	return nil
+func (d *Timestamp) Encode() (interface{}, error) {
+	return d.ts, nil
 }
 
 // Decode Timestamp
-func (d *Timestamp) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Timestamp) Decode(data interface{}) (interface{}, error) {
 	ts, ok := data.(string)
 	if !ok {
-		return fmt.Errorf("Unknown error during decoding Timestamp: "+
-			"'string' is expected but '%T' is found",
-			data,
-		)
+		return nil,
+			fmt.Errorf("Unknown error during decoding Timestamp: "+
+				"'string' is expected but '%T' is found",
+				data,
+			)
 	}
 
 	matched, err := regexp.MatchString(TimestampPattern, ts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !matched {
-		return fmt.Errorf("Timestamp: string must in pattern " +
-			"YYYY-MM-DDTHH:MM:SS(Z|±HH:MM)")
+		return nil,
+			fmt.Errorf("Timestamp: string must in pattern " +
+				"YYYY-MM-DDTHH:MM:SS(Z|±HH:MM)",
+			)
 	}
 
 	d.ts = ts
-	(*m)[d.GetKey()] = ts
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return ts, nil
 }
 
 // ToJSON prepares the data for MarshalJSON

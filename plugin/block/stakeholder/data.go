@@ -102,14 +102,14 @@ func (d *Footprint) Set(data interface{}) error {
 }
 
 // Encode Footprint
-func (d *Footprint) Encode(m *map[string]interface{}) error {
-	return d.handler.Encode(m)
+func (d *Footprint) Encode() (interface{}, error) {
+	return d.handler.Encode()
 }
 
 // Decode Footprint
-func (d *Footprint) Decode(data interface{}, m *map[string]interface{}) error {
+func (d *Footprint) Decode(data interface{}) (interface{}, error) {
 	if d.handler != nil {
-		return fmt.Errorf("Footprint: re-create handler")
+		return nil, fmt.Errorf("Footprint: re-create handler")
 	}
 
 	switch data.(type) {
@@ -119,14 +119,19 @@ func (d *Footprint) Decode(data interface{}, m *map[string]interface{}) error {
 		// TODO URL handler
 		d.handler = block.NewString(d.GetKey(), d.IsRequired())
 	default:
-		return fmt.Errorf("Footprint: link is expected but '%T' is found", data)
+		return nil, fmt.Errorf("Footprint: link is expected but '%T' is found", data)
 	}
 
-	if err := d.handler.Decode(data, m); err != nil {
-		return err
+	dec, err := d.handler.Decode(data)
+	if err != nil {
+		return nil, err
 	}
 
-	return d.DataBase.Decode(data, m)
+	if _, err := d.DataBase.Decode(data); err != nil {
+		return nil, err
+	}
+
+	return dec, nil
 }
 
 // ToJSON prepares the data for MarshalJSON
