@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-ipfs/core/coredag"
 	"github.com/ipfs/go-ipfs/plugin"
 	"github.com/likecoin/iscn-ipld/plugin/iscn"
@@ -35,6 +37,9 @@ func (*Plugin) Version() string {
 
 // Init Plugin
 func (*Plugin) Init(*plugin.Environment) error {
+	fmt.Println("********************************************************************************")
+	fmt.Println("Plugin INIT: ipld-iscn")
+	fmt.Println("********************************************************************************")
 	iscn.Register()
 	return nil
 }
