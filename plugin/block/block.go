@@ -3,6 +3,7 @@ package block
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"gitlab.com/c0b/go-ordered-json"
@@ -641,9 +642,33 @@ func (b *Base) Resolve(path []string) (interface{}, []string, error) {
 		return data.Resolve(rest)
 	}
 
-	// TODO: custom parameters
+	// Handle custom parameters
+	var obj interface{} = b.custom
+	for _, key := range path {
+		switch value := obj.(type) {
+		case map[string]interface{}:
+			v, ok := value[key]
+			if !ok {
+				return nil, nil, fmt.Errorf("no such link")
+			}
+			obj = v
+		case []interface{}:
+			i, err := strconv.ParseInt(key, 10, 64)
+			if err != nil {
+				return nil, nil, fmt.Errorf("no such link")
+			}
 
-	return nil, nil, fmt.Errorf("no such link")
+			if i >= int64(len(value)) {
+				return nil, nil, fmt.Errorf("index %d does not exist", i)
+			}
+
+			obj = value[i]
+		default:
+			return nil, nil, fmt.Errorf("no such link")
+		}
+	}
+
+	return obj, nil, nil
 }
 
 // Tree lists all paths within the object under 'path', and up to the given depth.
