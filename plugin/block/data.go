@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"gitlab.com/c0b/go-ordered-json"
 
 	node "github.com/ipfs/go-ipld-format"
 )
@@ -31,7 +30,7 @@ type Data interface {
 
 	Encode() (interface{}, error)
 	Decode(interface{}) (interface{}, error)
-	ToJSON(*ordered.OrderedMap) error
+	ToJSON() (interface{}, error)
 
 	Resolve(path []string) (interface{}, []string, error)
 }
@@ -185,18 +184,17 @@ func (d *DataArray) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *DataArray) ToJSON(om *ordered.OrderedMap) error {
-	placeholder := ordered.NewOrderedMap()
+func (d *DataArray) ToJSON() (interface{}, error) {
 	res := []interface{}{}
 	for i, data := range d.array {
-		if err := data.ToJSON(placeholder); err != nil {
-			return fmt.Errorf("(Index %d) %s", i, err.Error())
+		value, err := data.ToJSON()
+		if err != nil {
+			return nil, fmt.Errorf("(Index %d) %s", i, err.Error())
 		}
-		res = append(res, placeholder.Get(data.GetKey()))
+		res = append(res, value)
 	}
 
-	om.Set(d.GetKey(), res)
-	return nil
+	return res, nil
 }
 
 // Resolve resolves the value
@@ -309,10 +307,8 @@ func (d *Object) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Object) ToJSON(om *ordered.OrderedMap) error {
-	// TODO keep order of the JSON
-	om.Set(d.GetKey(), d.object.GetData())
-	return nil
+func (d *Object) ToJSON() (interface{}, error) {
+	return d.object.GetData()
 }
 
 // Resolve resolves the value
@@ -674,18 +670,19 @@ func (d *Number) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Number) ToJSON(om *ordered.OrderedMap) error {
+func (d *Number) ToJSON() (interface{}, error) {
 	switch d.GetType() {
 	case Int32T:
-		om.Set(d.GetKey(), d.i32)
+		return d.i32, nil
 	case Uint32T:
-		om.Set(d.GetKey(), d.u32)
+		return d.u32, nil
 	case Int64T:
-		om.Set(d.GetKey(), d.i64)
+		return d.i64, nil
 	case Uint64T:
-		om.Set(d.GetKey(), d.u64)
+		return d.u64, nil
 	}
-	return nil
+
+	return nil, fmt.Errorf("Number: unexpected type %d", d.GetType())
 }
 
 // Resolve resolves the value
@@ -790,9 +787,8 @@ func (d *String) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *String) ToJSON(om *ordered.OrderedMap) error {
-	om.Set(d.GetKey(), d.value)
-	return nil
+func (d *String) ToJSON() (interface{}, error) {
+	return d.value, nil
 }
 
 // Resolve resolves the value
@@ -874,9 +870,8 @@ func (d *Context) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Context) ToJSON(om *ordered.OrderedMap) error {
-	om.Set(d.GetKey(), d.getSchemaURL())
-	return nil
+func (d *Context) ToJSON() (interface{}, error) {
+	return d.getSchemaURL(), nil
 }
 
 // Resolve resolves the value
@@ -989,23 +984,22 @@ func (d *Cid) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Cid) ToJSON(om *ordered.OrderedMap) error {
+func (d *Cid) ToJSON() (interface{}, error) {
 	_, c, err := cid.CidFromBytes(d.c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	value, err := c.StringOfBase('z')
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	link := map[string]string{
 		"/": fmt.Sprintf("/ipfs/%s", value),
 	}
 
-	om.Set(d.GetKey(), link)
-	return nil
+	return link, nil
 }
 
 // Resolve resolves the link
@@ -1113,9 +1107,8 @@ func (d *Timestamp) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Timestamp) ToJSON(om *ordered.OrderedMap) error {
-	om.Set(d.GetKey(), d.ts)
-	return nil
+func (d *Timestamp) ToJSON() (interface{}, error) {
+	return d.ts, nil
 }
 
 // Resolve resolves the value

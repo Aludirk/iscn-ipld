@@ -5,7 +5,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/likecoin/iscn-ipld/plugin/block"
-	"gitlab.com/c0b/go-ordered-json"
 )
 
 // ==================================================
@@ -135,8 +134,8 @@ func (d *Footprint) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *Footprint) ToJSON(om *ordered.OrderedMap) error {
-	return d.handler.ToJSON(om)
+func (d *Footprint) ToJSON() (interface{}, error) {
+	return d.handler.ToJSON()
 }
 
 // Resolve resolves the link

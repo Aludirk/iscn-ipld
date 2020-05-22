@@ -50,7 +50,7 @@ type Codec interface {
 
 	MarkNested()
 
-	GetData() map[string]interface{}
+	GetData() (*ordered.OrderedMap, error)
 	SetData(map[string]interface{}) error
 
 	Encode() (map[string]interface{}, error)
@@ -400,6 +400,21 @@ func (b *Base) SetValidator(validator Validator) {
 
 // MarshalJSON convert the block to JSON format
 func (b *Base) MarshalJSON() ([]byte, error) {
+	om, err := b.GetData()
+	if err != nil {
+		return nil, err
+	}
+
+	return om.MarshalJSON()
+}
+
+// MarkNested marks the block as a nested block
+func (b *Base) MarkNested() {
+	b.isNested = true
+}
+
+// GetData returns the block data as ordered.OrderedMap
+func (b *Base) GetData() (*ordered.OrderedMap, error) {
 	om := ordered.NewOrderedMap()
 	for _, key := range b.keys {
 		handler := b.data[key]
@@ -417,36 +432,19 @@ func (b *Base) MarshalJSON() ([]byte, error) {
 			continue
 		}
 
-		if err := handler.ToJSON(om); err != nil {
+		value, err := handler.ToJSON()
+		if err != nil {
 			return nil, err
 		}
+
+		om.Set(handler.GetKey(), value)
 	}
 
 	for key, value := range b.custom {
 		om.Set(key, value)
 	}
 
-	return om.MarshalJSON()
-}
-
-// MarkNested marks the block as a nested block
-func (b *Base) MarkNested() {
-	b.isNested = true
-}
-
-// GetData returns the block data as map[string]interface{}
-func (b *Base) GetData() map[string]interface{} {
-	res := map[string]interface{}{}
-
-	for key, value := range b.obj {
-		res[key] = value
-	}
-
-	for key, value := range b.custom {
-		res[key] = value
-	}
-
-	return res
+	return om, nil
 }
 
 // SetData sets and validates the data

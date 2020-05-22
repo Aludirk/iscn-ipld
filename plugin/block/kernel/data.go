@@ -5,7 +5,6 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/likecoin/iscn-ipld/plugin/block"
-	"gitlab.com/c0b/go-ordered-json"
 )
 
 // ==================================================
@@ -73,9 +72,8 @@ func (d *ID) Decode(data interface{}) (interface{}, error) {
 }
 
 // ToJSON prepares the data for MarshalJSON
-func (d *ID) ToJSON(om *ordered.OrderedMap) error {
-	om.Set(d.GetKey(), d.GetID())
-	return nil
+func (d *ID) ToJSON() (interface{}, error) {
+	return d.GetID(), nil
 }
 
 // Resolve resolves the value
