@@ -88,8 +88,7 @@ func (d *Footprint) Set(obj interface{}) error {
 	case cid.Cid:
 		d.handler = data.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
 	case string:
-		// TODO URL handler
-		d.handler = data.NewString(d.GetKey(), d.IsRequired())
+		d.handler = data.NewURL(d.GetKey(), d.IsRequired())
 	default:
 		return fmt.Errorf("Footprint: link is expected but '%T' is found", obj)
 	}
@@ -117,8 +116,7 @@ func (d *Footprint) Decode(obj interface{}) (interface{}, error) {
 	case []uint8:
 		d.handler = data.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
 	case string:
-		// TODO URL handler
-		d.handler = data.NewString(d.GetKey(), d.IsRequired())
+		d.handler = data.NewURL(d.GetKey(), d.IsRequired())
 	default:
 		return nil, fmt.Errorf("Footprint: link is expected but '%T' is found", obj)
 	}

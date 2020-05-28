@@ -57,7 +57,7 @@ var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
 	schema := []data.Data{
-		data.NewString("id", true), // TODO llc://id
+		data.NewLikeCoinChainID("id", true),
 		data.NewString("name", false),
 		data.NewString("description", false),
 	}

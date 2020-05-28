@@ -66,9 +66,9 @@ func newSchemaV1() (block.Codec, error) {
 		data.NewString("type", true),
 		version,
 		parent,
-		data.NewString("source", false), // TODO URL
+		data.NewURL("source", false),
 		data.NewString("edition", false),
-		data.NewString("fingerprint", true), // TODO HashURL
+		data.NewHash("fingerprint", true),
 		data.NewString("title", true),
 		data.NewString("description", false),
 		data.NewDataArray("tags", false, data.NewString("_", false)),
