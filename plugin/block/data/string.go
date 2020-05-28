@@ -12,8 +12,7 @@ import (
 type String struct {
 	*Base
 
-	value  string
-	filter *map[string]struct{}
+	value string
 }
 
 var _ Data = (*String)(nil)
@@ -25,24 +24,10 @@ func NewString(key string, isRequired bool) *String {
 	}
 }
 
-// NewStringWithFilter creates a string data handler with filter
-func NewStringWithFilter(key string, isRequired bool, filter []string) *String {
-	filterPtr := &map[string]struct{}{}
-	for _, value := range filter {
-		(*filterPtr)[value] = struct{}{}
-	}
-
-	return &String{
-		Base:   NewBase(key, isRequired),
-		filter: filterPtr,
-	}
-}
-
 // Prototype creates a prototype String
 func (d *String) Prototype() Data {
 	return &String{
-		Base:   d.Base.Prototype(),
-		filter: d.filter,
+		Base: d.Base.Prototype(),
 	}
 }
 
@@ -54,12 +39,6 @@ func (d *String) Get() string {
 // Set the value of String
 func (d *String) Set(obj interface{}) error {
 	if value, ok := obj.(string); ok {
-		if d.filter != nil {
-			if _, ok := (*d.filter)[value]; !ok {
-				return fmt.Errorf("String: %q is not a valid value", value)
-			}
-		}
-
 		d.value = value
 		d.Base.MarkDefined()
 		return nil

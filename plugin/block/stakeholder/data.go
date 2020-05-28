@@ -23,7 +23,7 @@ const (
 
 // Type is a data handler for the type of stakeholder
 type Type struct {
-	*data.String
+	*data.FilterString
 }
 
 var _ data.Data = (*Type)(nil)
@@ -31,7 +31,7 @@ var _ data.Data = (*Type)(nil)
 // NewType creates a stakeholder type data handler
 func NewType() *Type {
 	return &Type{
-		String: data.NewStringWithFilter(
+		FilterString: data.NewFilterString(
 			"type",
 			true,
 			[]string{

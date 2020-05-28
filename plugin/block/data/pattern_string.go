@@ -42,6 +42,11 @@ func (d *PatternString) Prototype() Data {
 	}
 }
 
+// Get returns the string value
+func (d *PatternString) Get() string {
+	return d.value.Get()
+}
+
 // Set the value of PatternString string
 func (d *PatternString) Set(obj interface{}) error {
 	if err := d.value.Set(obj); err != nil {
@@ -61,7 +66,7 @@ func (d *PatternString) Set(obj interface{}) error {
 
 // Encode PatternString
 func (d *PatternString) Encode() (interface{}, error) {
-	return d.value.Get(), nil
+	return d.value.Encode()
 }
 
 // Decode PatternString
@@ -76,16 +81,12 @@ func (d *PatternString) Decode(obj interface{}) (interface{}, error) {
 
 // ToJSON prepares the data for MarshalJSON
 func (d *PatternString) ToJSON() (interface{}, error) {
-	return d.value.Get(), nil
+	return d.value.ToJSON()
 }
 
 // Resolve resolves the value
 func (d *PatternString) Resolve(path []string) (interface{}, []string, error) {
-	if len(path) != 0 {
-		return nil, nil, fmt.Errorf("Unexpected path elements past %s", path[0])
-	}
-
-	return d.value.Get(), nil, nil
+	return d.value.Resolve(path)
 }
 
 // ==================================================
