@@ -2,6 +2,7 @@ package rights
 
 import (
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 	"github.com/likecoin/iscn-ipld/plugin/block/right"
 )
 
@@ -28,7 +29,7 @@ type base struct {
 	*block.Base
 }
 
-func newBase(version uint64, schema []block.Data) (*base, error) {
+func newBase(version uint64, schema []data.Data) (*base, error) {
 	blockBase, err := block.NewBase(
 		block.CodecRights,
 		SchemaName,
@@ -56,10 +57,10 @@ type schemaV1 struct {
 var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
-	prototype := block.NewObject("_", true, right.SchemaV1Prototype)
+	prototype := data.NewObject("_", true, right.SchemaV1Prototype)
 
-	schema := []block.Data{
-		block.NewDataArray("rights", true, prototype),
+	schema := []data.Data{
+		data.NewDataArray("rights", true, prototype),
 	}
 
 	rightsBase, err := newBase(1, schema)

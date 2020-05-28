@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 )
 
 // ==================================================
@@ -13,24 +13,24 @@ import (
 
 // ID is a data handler for the ISCN ID
 type ID struct {
-	*block.DataBase
+	*data.Base
 
 	id []byte
 }
 
-var _ block.Data = (*ID)(nil)
+var _ data.Data = (*ID)(nil)
 
 // NewID creates an ISCN ID
 func NewID() *ID {
 	return &ID{
-		DataBase: block.NewDataBase("id", true),
+		Base: data.NewBase("id", true),
 	}
 }
 
 // Prototype creates a prototype ID
-func (d *ID) Prototype() block.Data {
+func (d *ID) Prototype() data.Data {
 	return &ID{
-		DataBase: d.DataBase.Prototype(),
+		Base: d.Base.Prototype(),
 	}
 }
 
@@ -40,17 +40,18 @@ func (d *ID) GetID() string {
 }
 
 // Set the value of ID
-func (d *ID) Set(data interface{}) error {
-	if id, ok := data.([]byte); ok {
+func (d *ID) Set(obj interface{}) error {
+	if id, ok := obj.([]byte); ok {
 		if len(id) != 32 {
 			return fmt.Errorf("ID: should length 32 but %d is found", len(id))
 		}
 
 		d.id = id
-		return d.DataBase.Set(data)
+		d.Base.MarkDefined()
+		return nil
 	}
 
-	return fmt.Errorf("ID: '[]byte' is expected but '%T' is found", data)
+	return fmt.Errorf("ID: '[]byte' is expected but '%T' is found", obj)
 }
 
 // Encode ID
@@ -59,15 +60,12 @@ func (d *ID) Encode() (interface{}, error) {
 }
 
 // Decode ID
-func (d *ID) Decode(data interface{}) (interface{}, error) {
-	if err := d.Set(data); err != nil {
+func (d *ID) Decode(obj interface{}) (interface{}, error) {
+	if err := d.Set(obj); err != nil {
 		return nil, err
 	}
 
-	if _, err := d.DataBase.Decode(data); err != nil {
-		return nil, err
-	}
-
+	d.Base.MarkDefined()
 	return d.id, nil
 }
 

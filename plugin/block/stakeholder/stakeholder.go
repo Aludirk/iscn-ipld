@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 )
 
 const (
@@ -29,7 +30,7 @@ type base struct {
 	*block.Base
 }
 
-func newBase(version uint64, schema []block.Data) (*base, error) {
+func newBase(version uint64, schema []data.Data) (*base, error) {
 	blockBase, err := block.NewBase(
 		block.CodecStakeholder,
 		SchemaName,
@@ -63,10 +64,10 @@ func newSchemaV1() (block.Codec, error) {
 	typ := NewType()
 	footprint := NewFootprint()
 
-	schema := []block.Data{
+	schema := []data.Data{
 		typ,
-		block.NewCid("stakeholder", true, block.CodecEntity),
-		block.NewNumber("sharing", true, block.Uint32T),
+		data.NewCid("stakeholder", true, block.CodecEntity),
+		data.NewNumber("sharing", true, data.Uint32T),
 		footprint,
 	}
 
@@ -86,7 +87,7 @@ func newSchemaV1() (block.Codec, error) {
 }
 
 // SchemaV1Prototype creates a prototype for schemaV1
-func SchemaV1Prototype() block.Codec {
+func SchemaV1Prototype() data.Codec {
 	res, _ := newSchemaV1()
 	return res
 }

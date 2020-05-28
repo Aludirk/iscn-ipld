@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 )
 
 const (
@@ -27,7 +28,7 @@ type base struct {
 	*block.Base
 }
 
-func newBase(version uint64, schema []block.Data) (*base, error) {
+func newBase(version uint64, schema []data.Data) (*base, error) {
 	blockBase, err := block.NewBase(
 		block.CodecEntity,
 		SchemaName,
@@ -55,10 +56,10 @@ type schemaV1 struct {
 var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
-	schema := []block.Data{
-		block.NewString("id", true), // TODO llc://id
-		block.NewString("name", false),
-		block.NewString("description", false),
+	schema := []data.Data{
+		data.NewString("id", true), // TODO llc://id
+		data.NewString("name", false),
+		data.NewString("description", false),
 	}
 
 	entityBase, err := newBase(1, schema)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 )
 
 const (
@@ -31,7 +32,7 @@ type base struct {
 	id *ID
 }
 
-func newBase(version uint64, schema []block.Data, id *ID) (*base, error) {
+func newBase(version uint64, schema []data.Data, id *ID) (*base, error) {
 	blockBase, err := block.NewBase(
 		block.CodecISCN,
 		SchemaName,
@@ -70,25 +71,25 @@ func (b *base) String() string {
 type schemaV1 struct {
 	*base
 
-	version *block.Number
-	parent  *block.Cid
+	version *data.Number
+	parent  *data.Cid
 }
 
 var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
 	id := NewID()
-	version := block.NewNumber("version", true, block.Uint64T)
-	parent := block.NewCid("parent", false, block.CodecISCN)
+	version := data.NewNumber("version", true, data.Uint64T)
+	parent := data.NewCid("parent", false, block.CodecISCN)
 
-	schema := []block.Data{
+	schema := []data.Data{
 		id,
-		block.NewTimestamp("timestamp", true),
+		data.NewTimestamp("timestamp", true),
 		version,
 		parent,
-		block.NewCid("rights", true, block.CodecRights),
-		block.NewCid("stakeholders", true, block.CodecStakeholders),
-		block.NewCid("content", true, block.CodecContent),
+		data.NewCid("rights", true, block.CodecRights),
+		data.NewCid("stakeholders", true, block.CodecStakeholders),
+		data.NewCid("content", true, block.CodecContent),
 	}
 
 	iscnKernelBase, err := newBase(1, schema, id)
@@ -108,5 +109,5 @@ func newSchemaV1() (block.Codec, error) {
 
 // Validate the data
 func (o *schemaV1) Validate() error {
-	return block.ValidateParent(o.version, o.parent)
+	return data.ValidateParent(o.version, o.parent)
 }

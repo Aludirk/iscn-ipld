@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 )
 
 // ==================================================
@@ -22,15 +23,15 @@ const (
 
 // Type is a data handler for the type of stakeholder
 type Type struct {
-	*block.String
+	*data.String
 }
 
-var _ block.Data = (*Type)(nil)
+var _ data.Data = (*Type)(nil)
 
 // NewType creates a stakeholder type data handler
 func NewType() *Type {
 	return &Type{
-		String: block.NewStringWithFilter(
+		String: data.NewStringWithFilter(
 			"type",
 			true,
 			[]string{
@@ -46,7 +47,7 @@ func NewType() *Type {
 }
 
 // Prototype creates a prototype Type
-func (d *Type) Prototype() block.Data {
+func (d *Type) Prototype() data.Data {
 	return NewType()
 }
 
@@ -56,48 +57,49 @@ func (d *Type) Prototype() block.Data {
 
 // Footprint is a data handler for the footprint link to the underlying work
 type Footprint struct {
-	*block.DataBase
+	*data.Base
 
-	handler block.Data
+	handler data.Data
 }
 
-var _ block.Data = (*Footprint)(nil)
+var _ data.Data = (*Footprint)(nil)
 
 // NewFootprint creates a footprint data handler
 func NewFootprint() *Footprint {
 	return &Footprint{
-		DataBase: block.NewDataBase("footprint", false),
+		Base: data.NewBase("footprint", false),
 	}
 }
 
 // Prototype creates a protype Footprint
-func (d *Footprint) Prototype() block.Data {
+func (d *Footprint) Prototype() data.Data {
 	return &Footprint{
-		DataBase: d.DataBase.Prototype(),
+		Base: d.Base.Prototype(),
 	}
 }
 
 // Set the value of link of footprint
-func (d *Footprint) Set(data interface{}) error {
+func (d *Footprint) Set(obj interface{}) error {
 	if d.handler != nil {
 		return fmt.Errorf("Footprint: re-create handler")
 	}
 
-	switch data.(type) {
+	switch obj.(type) {
 	case cid.Cid:
-		d.handler = block.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
+		d.handler = data.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
 	case string:
 		// TODO URL handler
-		d.handler = block.NewString(d.GetKey(), d.IsRequired())
+		d.handler = data.NewString(d.GetKey(), d.IsRequired())
 	default:
-		return fmt.Errorf("Footprint: link is expected but '%T' is found", data)
+		return fmt.Errorf("Footprint: link is expected but '%T' is found", obj)
 	}
 
-	if err := d.handler.Set(data); err != nil {
+	if err := d.handler.Set(obj); err != nil {
 		return err
 	}
 
-	return d.DataBase.Set(data)
+	d.Base.MarkDefined()
+	return nil
 }
 
 // Encode Footprint
@@ -106,30 +108,27 @@ func (d *Footprint) Encode() (interface{}, error) {
 }
 
 // Decode Footprint
-func (d *Footprint) Decode(data interface{}) (interface{}, error) {
+func (d *Footprint) Decode(obj interface{}) (interface{}, error) {
 	if d.handler != nil {
 		return nil, fmt.Errorf("Footprint: re-create handler")
 	}
 
-	switch data.(type) {
+	switch obj.(type) {
 	case []uint8:
-		d.handler = block.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
+		d.handler = data.NewCid(d.GetKey(), d.IsRequired(), block.CodecISCN)
 	case string:
 		// TODO URL handler
-		d.handler = block.NewString(d.GetKey(), d.IsRequired())
+		d.handler = data.NewString(d.GetKey(), d.IsRequired())
 	default:
-		return nil, fmt.Errorf("Footprint: link is expected but '%T' is found", data)
+		return nil, fmt.Errorf("Footprint: link is expected but '%T' is found", obj)
 	}
 
-	dec, err := d.handler.Decode(data)
+	dec, err := d.handler.Decode(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := d.DataBase.Decode(data); err != nil {
-		return nil, err
-	}
-
+	d.Base.MarkDefined()
 	return dec, nil
 }
 

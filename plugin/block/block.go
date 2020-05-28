@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 	"gitlab.com/c0b/go-ordered-json"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -82,7 +83,7 @@ func RegisterIscnObjectFactory(
 func Encode(
 	codec uint64,
 	version uint64,
-	data map[string]interface{},
+	m map[string]interface{},
 ) (IscnObject, error) {
 	schemas, ok := factory[codec]
 	if !ok {
@@ -99,7 +100,7 @@ func Encode(
 		return nil, err
 	}
 
-	if err := obj.SetData(data); err != nil {
+	if err := obj.SetData(m); err != nil {
 		return nil, err
 	}
 
@@ -117,12 +118,12 @@ func DecodeBlock(block blocks.Block) (node.Node, error) {
 
 // Decode decodes the raw IPLD data back to data object
 func Decode(rawData []byte, c cid.Cid) (IscnObject, error) {
-	data := map[string]interface{}{}
-	if err := cbor.DecodeInto(rawData, &data); err != nil {
+	rawObj := map[string]interface{}{}
+	if err := cbor.DecodeInto(rawData, &rawObj); err != nil {
 		return nil, err
 	}
 
-	v, ok := data[ContextKey]
+	v, ok := rawObj[data.ContextKey]
 	if !ok {
 		return nil, fmt.Errorf("Invalid ISCN IPLD object, missing context")
 	}
@@ -134,7 +135,7 @@ func Decode(rawData []byte, c cid.Cid) (IscnObject, error) {
 
 	schemas, ok := factory[c.Type()]
 	if !ok {
-		return nil, fmt.Errorf("%q is not registered", schemaNames[c.Type()])
+		return nil, fmt.Errorf("Codec 0x%x is not registered", c.Type())
 	}
 
 	if version > (uint64)(len(schemas)) {
@@ -147,7 +148,7 @@ func Decode(rawData []byte, c cid.Cid) (IscnObject, error) {
 		return nil, err
 	}
 
-	if err := obj.Decode(data); err != nil {
+	if err := obj.Decode(rawObj); err != nil {
 		return nil, err
 	}
 
@@ -174,6 +175,30 @@ func Decode(rawData []byte, c cid.Cid) (IscnObject, error) {
 	return obj, nil
 }
 
+const (
+	// TODO real domain
+	domainIscn = "iscn"
+
+	// TODO real domain
+	domainLikeCoin = "likecoin"
+)
+
+func getSchema(codec uint64) string {
+	switch codec {
+	case CodecISCN,
+		CodecRights,
+		CodecStakeholders,
+		CodecContent,
+		CodecEntity,
+		CodecRight,
+		CodecStakeholder,
+		CodecTimePeriod:
+		return fmt.Sprintf("https://%s/%s", domainIscn, schemaNames[codec])
+	}
+
+	panic(fmt.Sprintf("Unknown codec 0x%x", codec))
+}
+
 // ==================================================
 // Base
 // ==================================================
@@ -186,7 +211,7 @@ type Base struct {
 	name      string
 	version   uint64
 	obj       map[string]interface{}
-	data      map[string]Data
+	data      map[string]data.Data
 	keys      []string
 	custom    map[string]interface{}
 	validator Validator
@@ -196,23 +221,24 @@ type Base struct {
 }
 
 var _ Codec = (*Base)(nil)
+var _ data.Codec = (*Base)(nil)
 
 // NewBase creates the basic block of an ISCN object
-func NewBase(codec uint64, name string, version uint64, schema []Data) (*Base, error) {
+func NewBase(codec uint64, name string, version uint64, schema []data.Data) (*Base, error) {
 	// Create the base
 	b := &Base{
 		isNested:  false,
 		codec:     codec,
 		name:      name,
 		version:   version,
-		data:      map[string]Data{},
+		data:      map[string]data.Data{},
 		keys:      []string{},
 		custom:    map[string]interface{}{},
 		validator: nil,
 	}
 
 	// Set "context" data
-	context := NewContext(name)
+	context := data.NewContext(getSchema(codec))
 	err := context.Set(version)
 	if err != nil {
 		return nil, err
@@ -222,10 +248,10 @@ func NewBase(codec uint64, name string, version uint64, schema []Data) (*Base, e
 	b.keys = append(b.keys, context.GetKey())
 
 	// Setup schema
-	for _, data := range schema {
-		key := data.GetKey()
+	for _, handler := range schema {
+		key := handler.GetKey()
 		b.keys = append(b.keys, key)
-		b.data[key] = data
+		b.data[key] = handler
 	}
 
 	return b, nil
@@ -419,7 +445,7 @@ func (b *Base) GetData() (*ordered.OrderedMap, error) {
 	for _, key := range b.keys {
 		handler := b.data[key]
 
-		if key != ContextKey { // Context key does not exist in b.obj
+		if key != data.ContextKey { // Context key does not exist in b.obj
 			_, exist := b.obj[key]
 			if !exist {
 				if handler.IsRequired() {
@@ -448,17 +474,17 @@ func (b *Base) GetData() (*ordered.OrderedMap, error) {
 }
 
 // SetData sets and validates the data
-func (b *Base) SetData(data map[string]interface{}) error {
+func (b *Base) SetData(m map[string]interface{}) error {
 	b.obj = map[string]interface{}{}
 
 	// Set the data
 	for key, handler := range b.data {
 		// Skip context property
-		if key == ContextKey {
+		if key == data.ContextKey {
 			continue
 		}
 
-		d, ok := data[key]
+		d, ok := m[key]
 		if !ok || d == nil {
 			if handler.IsRequired() {
 				return fmt.Errorf("The property %q is required", key)
@@ -484,7 +510,7 @@ func (b *Base) SetData(data map[string]interface{}) error {
 	}
 
 	// Save the custom data
-	for key, value := range data {
+	for key, value := range m {
 		_, exist := b.data[key]
 		if !exist {
 			b.custom[key] = value
@@ -499,7 +525,7 @@ func (b *Base) Encode() (map[string]interface{}, error) {
 	// Extract all data from data handlers
 	m := map[string]interface{}{}
 	for _, handler := range b.data {
-		if handler.GetKey() != ContextKey { // Context key does not exist in b.obj
+		if handler.GetKey() != data.ContextKey { // Context key does not exist in b.obj
 			_, exist := b.obj[handler.GetKey()]
 			if !exist {
 				if handler.IsRequired() {
@@ -546,18 +572,18 @@ func (b *Base) Encode() (map[string]interface{}, error) {
 }
 
 // Decode the data back to ISCN object
-func (b *Base) Decode(data map[string]interface{}) error {
+func (b *Base) Decode(m map[string]interface{}) error {
 	// Remove the context property as it is processed by base ISCN object
-	delete(data, ContextKey)
+	delete(m, data.ContextKey)
 
 	b.obj = map[string]interface{}{}
 	for key, handler := range b.data {
 		// Skip context property
-		if key == ContextKey {
+		if key == data.ContextKey {
 			continue
 		}
 
-		d, ok := data[key]
+		d, ok := m[key]
 		if !ok || d == nil {
 			if handler.IsRequired() {
 				return fmt.Errorf("The property %q is required", key)
@@ -572,7 +598,7 @@ func (b *Base) Decode(data map[string]interface{}) error {
 		}
 		b.obj[key] = dec
 
-		delete(data, key)
+		delete(m, key)
 	}
 
 	// Validate the data
@@ -583,7 +609,7 @@ func (b *Base) Decode(data map[string]interface{}) error {
 	}
 
 	// Save the custom data
-	b.custom = data
+	b.custom = m
 
 	return nil
 }
@@ -624,11 +650,11 @@ func (b *Base) Resolve(path []string) (interface{}, []string, error) {
 
 	first, rest := path[0], path[1:]
 
-	if data, ok := b.data[first]; ok {
-		if first != ContextKey { // Context key does not exist in b.obj
+	if handler, ok := b.data[first]; ok {
+		if first != data.ContextKey { // Context key does not exist in b.obj
 			_, exist := b.obj[first]
 			if !exist {
-				if data.IsRequired() {
+				if handler.IsRequired() {
 					return nil, nil, fmt.Errorf("Unknown error: key %q should be exist", first)
 				}
 				return nil, nil, fmt.Errorf("no such link")
@@ -637,7 +663,7 @@ func (b *Base) Resolve(path []string) (interface{}, []string, error) {
 			// Nested block do not resolve context
 			return nil, nil, fmt.Errorf("no such link")
 		}
-		return data.Resolve(rest)
+		return handler.Resolve(rest)
 	}
 
 	// Handle custom parameters
@@ -689,7 +715,7 @@ func (b *Base) Links() []*node.Link {
 	links := []*node.Link{}
 	for _, d := range b.data {
 		switch c := d.(type) {
-		case *Cid:
+		case *data.Cid:
 			if link, err := c.Link(); err == nil {
 				links = append(links, link)
 			}

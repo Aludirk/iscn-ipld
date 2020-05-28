@@ -2,6 +2,7 @@ package right
 
 import (
 	"github.com/likecoin/iscn-ipld/plugin/block"
+	"github.com/likecoin/iscn-ipld/plugin/block/data"
 	"github.com/likecoin/iscn-ipld/plugin/block/time_period"
 )
 
@@ -28,7 +29,7 @@ type base struct {
 	*block.Base
 }
 
-func newBase(version uint64, schema []block.Data) (*base, error) {
+func newBase(version uint64, schema []data.Data) (*base, error) {
 	blockBase, err := block.NewBase(
 		block.CodecRight,
 		SchemaName,
@@ -56,12 +57,12 @@ type schemaV1 struct {
 var _ block.IscnObject = (*schemaV1)(nil)
 
 func newSchemaV1() (block.Codec, error) {
-	schema := []block.Data{
-		block.NewCid("holder", true, block.CodecEntity),
-		block.NewString("type", true), // TODO use filterd string??
-		block.NewCid("terms", true, 0),
-		block.NewObject("period", false, timeperiod.SchemaV1Prototype),
-		block.NewString("territory", false),
+	schema := []data.Data{
+		data.NewCid("holder", true, block.CodecEntity),
+		data.NewString("type", true), // TODO use filterd string??
+		data.NewCid("terms", true, 0),
+		data.NewObject("period", false, timeperiod.SchemaV1Prototype),
+		data.NewString("territory", false),
 	}
 
 	timePeriodBase, err := newBase(1, schema)
@@ -75,7 +76,7 @@ func newSchemaV1() (block.Codec, error) {
 }
 
 // SchemaV1Prototype creates a prototype for schemaV1
-func SchemaV1Prototype() block.Codec {
+func SchemaV1Prototype() data.Codec {
 	res, _ := newSchemaV1()
 	return res
 }
